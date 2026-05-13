@@ -67,7 +67,7 @@ npm install
 cp .env.example .env
 ```
 
-Project ini tidak memakai `sharp`, sehingga lebih ringan dan lebih kompatibel dengan Termux Android. Pastikan `ffmpeg` sudah terinstall karena semua proses sticker memakai `ffmpeg`.
+Project ini hanya memakai `ffmpeg` untuk proses sticker/media agar lebih ringan dan lebih kompatibel dengan Termux Android.
 
 ## Konfigurasi `.env`
 
