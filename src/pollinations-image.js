@@ -6,6 +6,12 @@ export const buildPollinationsImageUrl = (prompt) => {
   return `${pollinationsBaseUrl}/${encodedPrompt}`;
 };
 
+export const getPollinationsImageExtension = (contentType) => {
+  if (contentType.includes('png')) return 'png';
+  if (contentType.includes('webp')) return 'webp';
+  return 'jpg';
+};
+
 export const generateImageBuffer = async (prompt, imageProvider = 'pollinations') => {
   const normalizedProvider = imageProvider.toLowerCase();
 
@@ -44,5 +50,10 @@ export const generateImageBuffer = async (prompt, imageProvider = 'pollinations'
     throw new Error('Pollinations mengembalikan gambar kosong. Coba prompt lain.');
   }
 
-  return imageBuffer;
+  return {
+    buffer: imageBuffer,
+    contentType,
+    extension: getPollinationsImageExtension(contentType),
+    imageUrl
+  };
 };

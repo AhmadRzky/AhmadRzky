@@ -7,7 +7,7 @@ import makeWASocket, {
 } from 'baileys';
 import Pino from 'pino';
 import qrcode from 'qrcode-terminal';
-import { generateReply, resetConversation } from './ai.js';
+import { cleanupGeneratedImageFile, generateImageFile, generateReply, resetConversation } from './ai.js';
 import { parseCommand } from './commands.js';
 import { config, validateConfig } from './config.js';
 import {
@@ -29,7 +29,6 @@ import {
   mediaLimits,
   videoToSticker
 } from './media-utils.js';
-import { generateImageBuffer } from './pollinations-image.js';
 
 const logger = Pino({ level: process.env.LOG_LEVEL || 'info' });
 
@@ -64,13 +63,21 @@ const handleCommand = async ({ socket, remoteJid, message, command }) => {
       throw new UserFacingError(`Tulis prompt gambar, contoh: ${config.botPrefix}gambar kucing astronot di bulan`);
     }
 
-    await socket.sendMessage(remoteJid, { text: 'Sedang membuat gambar AI gratis via Pollinations...' }, { quoted: message });
+    await socket.sendMessage(remoteJid, { text: 'Sedang membuat gambar AI...' }, { quoted: message });
+
+    let generatedImage;
 
     try {
-      const imageBuffer = await generateImageBuffer(command.args, config.imageProvider);
-      await socket.sendMessage(remoteJid, { image: imageBuffer, caption: `Hasil: ${command.args}` }, { quoted: message });
+      generatedImage = await generateImageFile(command.args);
+      await socket.sendMessage(
+        remoteJid,
+        { image: { url: generatedImage.filePath }, caption: `Hasil: ${command.args}` },
+        { quoted: message }
+      );
     } catch (error) {
       throw new UserFacingError(`Gagal generate gambar AI: ${error.message || 'terjadi kesalahan tidak diketahui.'}`);
+    } finally {
+      await cleanupGeneratedImageFile(generatedImage);
     }
 
     return;
