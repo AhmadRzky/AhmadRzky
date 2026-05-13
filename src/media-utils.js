@@ -47,13 +47,6 @@ export const assertSupportedUrl = (url) => {
   return parsed.toString();
 };
 
-const escapeSvg = (value) =>
-  value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;');
-
 const wrapStickerText = (text) => {
   const words = text.split(/\s+/);
   const lines = [];
@@ -73,6 +66,9 @@ const wrapStickerText = (text) => {
   if (current) lines.push(current);
   return lines.slice(0, 7);
 };
+
+const escapeFfmpegFilterPath = (filePath) =>
+  filePath.replaceAll('\\', '\\\\').replaceAll(':', '\\:').replaceAll("'", "\\'");
 
 export const saveTempMedia = async ({ buffer, extension, prefix = 'wa-media-', callback }) => {
   const safeExtension = extension.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'bin';
@@ -118,42 +114,43 @@ export const createTextSticker = async (text) => {
     throw new UserFacingError('Tulis teks sticker, contoh: !sticker Halo dunia');
   }
 
+  await ensureBinary('ffmpeg', 'pkg install ffmpeg');
+
   const lines = wrapStickerText(safeText);
   const longestLine = Math.max(...lines.map((line) => line.length), 1);
   const fontSize = Math.max(34, Math.min(70, Math.floor(340 / longestLine) * 2));
-  const lineHeight = fontSize * 1.18;
-  const startY = 256 - ((lines.length - 1) * lineHeight) / 2;
-  const textNodes = lines
-    .map(
-      (line, index) =>
-        `<text x="256" y="${startY + index * lineHeight}" text-anchor="middle" dominant-baseline="middle">${escapeSvg(line)}</text>`
-    )
-    .join('');
+  const dir = await mkdtemp(path.join(tmpdir(), 'wa-text-sticker-'));
+  const textPath = path.join(dir, 'text.txt');
+  const outputPath = path.join(dir, 'sticker.webp');
 
-  const svg = `
-    <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-      <rect width="512" height="512" rx="48" fill="#111827"/>
-      <g fill="#ffffff" stroke="#000000" stroke-width="7" paint-order="stroke" font-family="Arial, Helvetica, sans-serif" font-size="${fontSize}" font-weight="800">
-        ${textNodes}
-      </g>
-    </svg>`;
+  try {
+    await writeFile(textPath, lines.join('\n'));
+    const escapedTextPath = escapeFfmpegFilterPath(textPath);
 
-  return bufferToStickerWithFfmpeg({
-    buffer: Buffer.from(svg),
-    inputExtension: 'svg',
-    configure: (command) => {
-      command.outputOptions([
-        '-vf',
-        'scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
-        '-frames:v',
-        '1',
-        '-lossless',
-        '0',
-        '-quality',
-        '85'
-      ]).format('webp');
-    }
-  });
+    await new Promise((resolve, reject) => {
+      ffmpeg()
+        .input('color=c=#111827:s=512x512:d=1')
+        .inputFormat('lavfi')
+        .outputOptions([
+          '-vf',
+          `drawtext=textfile='${escapedTextPath}':fontcolor=white:fontsize=${fontSize}:borderw=4:bordercolor=black:line_spacing=10:x=(w-text_w)/2:y=(h-text_h)/2`,
+          '-frames:v',
+          '1',
+          '-lossless',
+          '0',
+          '-quality',
+          '85'
+        ])
+        .format('webp')
+        .save(outputPath)
+        .on('end', resolve)
+        .on('error', reject);
+    });
+
+    return await readFile(outputPath);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 };
 
 export const imageToSticker = async (buffer) =>
