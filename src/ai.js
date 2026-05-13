@@ -1,3 +1,6 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import OpenAI from 'openai';
 import { config } from './config.js';
 
@@ -20,22 +23,32 @@ export const resetConversation = (chatId) => {
   histories.delete(chatId);
 };
 
-export const generateImage = async (prompt) => {
+export const generateImageFile = async (prompt) => {
   const response = await client.images.generate({
     model: config.openAiImageModel,
     prompt,
     size: config.openAiImageSize,
     quality: config.openAiImageQuality,
+    output_format: 'png',
     n: 1
   });
 
   const imageBase64 = response.data?.[0]?.b64_json;
 
   if (!imageBase64) {
-    throw new Error('OpenAI tidak mengembalikan data gambar.');
+    throw new Error('OpenAI tidak mengembalikan data gambar base64.');
   }
 
-  return Buffer.from(imageBase64, 'base64');
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'wa-ai-image-'));
+  const filePath = path.join(tempDir, 'generated-image.png');
+  await writeFile(filePath, Buffer.from(imageBase64, 'base64'));
+
+  return { filePath, tempDir };
+};
+
+export const cleanupGeneratedImageFile = async (generatedImage) => {
+  if (!generatedImage?.tempDir) return;
+  await rm(generatedImage.tempDir, { recursive: true, force: true });
 };
 
 export const generateReply = async (chatId, userText) => {

@@ -7,7 +7,7 @@ import makeWASocket, {
 } from 'baileys';
 import Pino from 'pino';
 import qrcode from 'qrcode-terminal';
-import { generateImage, generateReply, resetConversation } from './ai.js';
+import { cleanupGeneratedImageFile, generateImageFile, generateReply, resetConversation } from './ai.js';
 import { parseCommand } from './commands.js';
 import { config, validateConfig } from './config.js';
 import {
@@ -64,8 +64,22 @@ const handleCommand = async ({ socket, remoteJid, message, command }) => {
     }
 
     await socket.sendMessage(remoteJid, { text: 'Sedang membuat gambar AI...' }, { quoted: message });
-    const imageBuffer = await generateImage(command.args);
-    await socket.sendMessage(remoteJid, { image: imageBuffer, caption: `Hasil: ${command.args}` }, { quoted: message });
+
+    let generatedImage;
+
+    try {
+      generatedImage = await generateImageFile(command.args);
+      await socket.sendMessage(
+        remoteJid,
+        { image: { url: generatedImage.filePath }, caption: `Hasil: ${command.args}` },
+        { quoted: message }
+      );
+    } catch (error) {
+      throw new UserFacingError(`Gagal generate gambar AI: ${error.message || 'terjadi kesalahan tidak diketahui.'}`);
+    } finally {
+      await cleanupGeneratedImageFile(generatedImage);
+    }
+
     return;
   }
 

@@ -75,7 +75,7 @@ Jika `sharp` gagal di Termux, pastikan Termux terbaru dari F-Droid/GitHub, jalan
 | --- | --- | --- |
 | `OPENAI_API_KEY` | API key OpenAI. | Wajib diisi |
 | `OPENAI_MODEL` | Model OpenAI untuk chat bot. | `gpt-5.4-mini` |
-| `OPENAI_IMAGE_MODEL` | Model OpenAI Images API untuk `!gambar`. | `gpt-image-1.5` |
+| `OPENAI_IMAGE_MODEL` | Model OpenAI Images API untuk `!gambar`. | `gpt-image-1` |
 | `OPENAI_IMAGE_SIZE` | Ukuran gambar AI. | `1024x1024` |
 | `OPENAI_IMAGE_QUALITY` | Kualitas gambar AI. | `low` |
 | `BOT_SYSTEM_PROMPT` | Instruksi gaya dan perilaku bot. | Asisten ramah dan ringkas |
@@ -118,7 +118,7 @@ Sesi login disimpan di folder `auth/` dan sudah diabaikan oleh Git.
 !gambar poster cyberpunk kota Jakarta saat hujan, warna neon, detail tinggi
 ```
 
-Bot akan memanggil OpenAI Images API lalu mengirim gambar hasilnya ke WhatsApp.
+Bot akan memanggil OpenAI Images API dengan model `gpt-image-1`, menyimpan hasilnya sementara di folder temp perangkat, mengirim file tersebut sebagai gambar WhatsApp, lalu menghapus file temporary.
 
 ### Membuat sticker
 
