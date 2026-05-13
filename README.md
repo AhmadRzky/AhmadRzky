@@ -1,6 +1,6 @@
 # WhatsApp AI Bot Node.js
 
-Bot WhatsApp AI menggunakan Node.js, [Baileys](https://github.com/WhiskeySockets/Baileys), OpenAI Responses API untuk chat, Pollinations AI untuk gambar gratis, `ffmpeg`, dan `yt-dlp`.
+Bot WhatsApp AI menggunakan Node.js, [Baileys](https://github.com/WhiskeySockets/Baileys), OpenAI Responses API, OpenAI Images API, `sharp`, `ffmpeg`, dan `yt-dlp`.
 
 ## Fitur
 
@@ -8,7 +8,7 @@ Bot WhatsApp AI menggunakan Node.js, [Baileys](https://github.com/WhiskeySockets
 - Balasan AI untuk chat pribadi.
 - Dukungan grup lewat mention bot atau prefix perintah.
 - Memori percakapan per chat selama proses bot berjalan.
-- `!gambar <prompt>` untuk generate gambar AI gratis via Pollinations dan mengirim hasilnya ke WhatsApp.
+- `!gambar <prompt>` untuk generate gambar AI dan mengirim hasilnya ke WhatsApp.
 - `!sticker` untuk membuat sticker dari gambar/video caption atau teks.
 - `!music <url>` untuk download audio dari link yang didukung `yt-dlp`.
 - `!video <url>` untuk download video dari link yang didukung `yt-dlp`.
@@ -20,7 +20,7 @@ Bot WhatsApp AI menggunakan Node.js, [Baileys](https://github.com/WhiskeySockets
 - Node.js 20 atau lebih baru.
 - Akun WhatsApp yang akan dipakai sebagai bot.
 - API key OpenAI.
-- `ffmpeg` untuk membuat sticker gambar/teks/video/gif dan konversi media.
+- `ffmpeg` untuk sticker video/gif dan konversi media.
 - `yt-dlp` untuk command `!music` dan `!video`.
 
 > Catatan: penggunaan automasi WhatsApp dapat dibatasi oleh ketentuan WhatsApp. Gunakan secara bertanggung jawab dan hindari spam.
@@ -67,7 +67,7 @@ npm install
 cp .env.example .env
 ```
 
-Project ini hanya memakai `ffmpeg` untuk proses sticker/media agar lebih ringan dan lebih kompatibel dengan Termux Android.
+Jika `sharp` gagal di Termux, pastikan Termux terbaru dari F-Droid/GitHub, jalankan `pkg upgrade`, lalu ulangi `npm install`.
 
 ## Konfigurasi `.env`
 
@@ -75,7 +75,9 @@ Project ini hanya memakai `ffmpeg` untuk proses sticker/media agar lebih ringan 
 | --- | --- | --- |
 | `OPENAI_API_KEY` | API key OpenAI. | Wajib diisi |
 | `OPENAI_MODEL` | Model OpenAI untuk chat bot. | `gpt-5.4-mini` |
-| `IMAGE_PROVIDER` | Provider gambar untuk `!gambar`. Saat ini hanya `pollinations`. | `pollinations` |
+| `OPENAI_IMAGE_MODEL` | Model OpenAI Images API untuk `!gambar`. | `gpt-image-1` |
+| `OPENAI_IMAGE_SIZE` | Ukuran gambar AI. | `1024x1024` |
+| `OPENAI_IMAGE_QUALITY` | Kualitas gambar AI. | `low` |
 | `BOT_SYSTEM_PROMPT` | Instruksi gaya dan perilaku bot. | Asisten ramah dan ringkas |
 | `BOT_PREFIX` | Prefix perintah di grup. | `!` |
 | `MAX_HISTORY_MESSAGES` | Jumlah pesan terakhir yang disimpan per chat. | `12` |
@@ -116,7 +118,7 @@ Sesi login disimpan di folder `auth/` dan sudah diabaikan oleh Git.
 !gambar poster cyberpunk kota Jakarta saat hujan, warna neon, detail tinggi
 ```
 
-Bot akan membuat URL `https://image.pollinations.ai/prompt/{prompt}` dengan `encodeURIComponent`, download hasil gambar dari Pollinations sebagai buffer, menyimpannya sementara sebagai `generated-image.png`, mengirim file tersebut sebagai image WhatsApp lewat Baileys, lalu menghapus folder temporary. Fitur gambar tidak memakai OpenAI API dan tidak membutuhkan billing OpenAI; OpenAI tetap hanya dipakai untuk chat biasa.
+Bot akan memanggil OpenAI Images API dengan model `gpt-image-1`, menyimpan hasilnya sementara di folder temp perangkat, mengirim file tersebut sebagai gambar WhatsApp, lalu menghapus file temporary.
 
 ### Membuat sticker
 
@@ -183,12 +185,11 @@ Jika link privat, tidak didukung `yt-dlp`, durasi terlalu panjang, atau file ter
 
 ```text
 src/
-├── ai.js             # Integrasi OpenAI Responses API untuk chat dan memori percakapan
+├── ai.js             # Integrasi OpenAI Responses API, Images API, dan memori percakapan
 ├── commands.js       # Parser command prefix
 ├── config.js         # Konfigurasi environment
 ├── index.js          # Koneksi WhatsApp dan handler pesan
-├── media-utils.js    # Sticker berbasis ffmpeg, yt-dlp, file temp, dan batas media
-├── pollinations-image.js # Generate gambar gratis via Pollinations
+├── media-utils.js    # Sticker, ffmpeg, yt-dlp, dan batas media
 └── message-utils.js  # Helper ekstraksi teks/media dan command
 ```
 

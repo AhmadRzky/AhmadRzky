@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { promisify } from 'node:util';
 import ffmpeg from 'fluent-ffmpeg';
+import sharp from 'sharp';
 import { config } from './config.js';
 
 const execFileAsync = promisify(execFile);
@@ -74,102 +75,12 @@ const wrapStickerText = (text) => {
   return lines.slice(0, 7);
 };
 
-const stickerSizeFilter =
-  'scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000,format=rgba';
-
-const staticWebpStickerOptions = (filter) => [
-  '-vf',
-  filter,
-  '-vcodec',
-  'libwebp',
-  '-lossless',
-  '0',
-  '-q:v',
-  '70',
-  '-preset',
-  'picture',
-  '-an',
-  '-vsync',
-  '0',
-  '-frames:v',
-  '1',
-  '-f',
-  'webp'
-];
-
-const animatedWebpStickerOptions = (filter) => [
-  '-vf',
-  filter,
-  '-vcodec',
-  'libwebp',
-  '-lossless',
-  '0',
-  '-q:v',
-  '65',
-  '-preset',
-  'default',
-  '-loop',
-  '0',
-  '-an',
-  '-vsync',
-  '0',
-  '-f',
-  'webp'
-];
-
-const detectImageExtension = (buffer) => {
-  if (buffer.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))) return 'png';
-  if (buffer.subarray(0, 3).equals(Buffer.from([0xff, 0xd8, 0xff]))) return 'jpg';
-  if (buffer.subarray(0, 4).toString('ascii') === 'RIFF' && buffer.subarray(8, 12).toString('ascii') === 'WEBP') return 'webp';
-  if (buffer.subarray(0, 3).toString('ascii') === 'GIF') return 'gif';
-  return 'img';
-};
-
-export const saveTempMedia = async ({ buffer, extension, prefix = 'wa-media-', callback }) => {
-  const safeExtension = extension.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'bin';
-  const dir = await mkdtemp(path.join(tmpdir(), prefix));
-  const filePath = path.join(dir, `media.${safeExtension}`);
-
-  try {
-    await writeFile(filePath, buffer);
-    return await callback(filePath);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
-};
-
-const runFfmpeg = (inputPath, outputPath, configure) =>
-  new Promise((resolve, reject) => {
-    const command = ffmpeg(inputPath);
-    configure(command);
-    command.save(outputPath).on('end', resolve).on('error', reject);
-  });
-
-const bufferToStickerWithFfmpeg = async ({ buffer, inputExtension = 'bin', configure }) => {
-  await ensureBinary('ffmpeg', 'pkg install ffmpeg');
-
-  const dir = await mkdtemp(path.join(tmpdir(), 'wa-sticker-'));
-  const safeExtension = inputExtension.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'bin';
-  const inputPath = path.join(dir, `input.${safeExtension}`);
-  const outputPath = path.join(dir, 'sticker.webp');
-
-  try {
-    await writeFile(inputPath, buffer);
-    await runFfmpeg(inputPath, outputPath, configure);
-    return await readFile(outputPath);
-  } finally {
-    await rm(dir, { recursive: true, force: true });
-  }
-};
-
 export const createTextSticker = async (text) => {
   const safeText = text.trim().slice(0, 180);
 
   if (!safeText) {
     throw new UserFacingError('Tulis teks sticker, contoh: !sticker Halo dunia');
   }
-
-  await ensureBinary('ffmpeg', 'pkg install ffmpeg');
 
   const lines = wrapStickerText(safeText);
   const longestLine = Math.max(...lines.map((line) => line.length), 1);
@@ -191,41 +102,50 @@ export const createTextSticker = async (text) => {
       </g>
     </svg>`;
 
-  const dir = await mkdtemp(path.join(tmpdir(), 'wa-text-sticker-'));
-  const inputPath = path.join(dir, 'input.svg');
-  const outputPath = path.join(dir, 'output.webp');
+  return sharp(Buffer.from(svg)).webp({ quality: 90 }).toBuffer();
+};
+
+export const imageToSticker = async (buffer) =>
+  sharp(buffer)
+    .resize(512, 512, { fit: 'inside', withoutEnlargement: true })
+    .webp({ quality: 85 })
+    .toBuffer();
+
+export const videoToSticker = async (buffer) => {
+  await ensureBinary('ffmpeg', 'pkg install ffmpeg');
+
+  const dir = await mkdtemp(path.join(tmpdir(), 'wa-sticker-'));
+  const inputPath = path.join(dir, 'input');
+  const outputPath = path.join(dir, 'sticker.webp');
 
   try {
-    await writeFile(inputPath, svg);
-    await runFfmpeg(inputPath, outputPath, (command) => {
-      command.outputOptions(staticWebpStickerOptions(stickerSizeFilter)).format('webp');
+    await writeFile(inputPath, buffer);
+
+    await new Promise((resolve, reject) => {
+      ffmpeg(inputPath)
+        .inputOptions(['-t 6'])
+        .outputOptions([
+          '-vf',
+          'fps=12,scale=512:512:force_original_aspect_ratio=decrease:flags=lanczos,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
+          '-loop',
+          '0',
+          '-an',
+          '-vsync',
+          '0',
+          '-s',
+          '512:512'
+        ])
+        .format('webp')
+        .save(outputPath)
+        .on('end', resolve)
+        .on('error', reject);
     });
+
     return await readFile(outputPath);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
 };
-
-export const imageToSticker = async (buffer) =>
-  bufferToStickerWithFfmpeg({
-    buffer,
-    inputExtension: detectImageExtension(buffer),
-    configure: (command) => {
-      command.outputOptions(staticWebpStickerOptions(stickerSizeFilter)).format('webp');
-    }
-  });
-
-export const videoToSticker = async (buffer) =>
-  bufferToStickerWithFfmpeg({
-    buffer,
-    inputExtension: 'mp4',
-    configure: (command) => {
-      command
-        .inputOptions(['-t 6'])
-        .outputOptions(animatedWebpStickerOptions(`fps=10,${stickerSizeFilter}`))
-        .format('webp');
-    }
-  });
 
 const getYtDlpMetadata = async (url) => {
   await ensureBinary('yt-dlp', 'pkg install python && pip install -U yt-dlp');
