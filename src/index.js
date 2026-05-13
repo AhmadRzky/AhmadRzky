@@ -63,7 +63,7 @@ const handleCommand = async ({ socket, remoteJid, message, command }) => {
       throw new UserFacingError(`Tulis prompt gambar, contoh: ${config.botPrefix}gambar kucing astronot di bulan`);
     }
 
-    await socket.sendMessage(remoteJid, { text: 'Sedang membuat gambar AI gratis via Pollinations...' }, { quoted: message });
+    await socket.sendMessage(remoteJid, { text: 'Sedang membuat gambar AI...' }, { quoted: message });
 
     let generatedImage;
 
