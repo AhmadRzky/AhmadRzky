@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import OpenAI from 'openai';
 import { config } from './config.js';
-import { generateImageBuffer } from './pollinations-image.js';
 
 const client = new OpenAI({ apiKey: config.openAiApiKey });
 const histories = new Map();
@@ -25,11 +24,24 @@ export const resetConversation = (chatId) => {
 };
 
 export const generateImageFile = async (prompt) => {
-  const imageBuffer = await generateImageBuffer(prompt, config.imageProvider);
-  const tempDir = await mkdtemp(path.join(tmpdir(), 'wa-pollinations-image-'));
-  const filePath = path.join(tempDir, 'generated-image.png');
+  const response = await client.images.generate({
+    model: config.openAiImageModel,
+    prompt,
+    size: config.openAiImageSize,
+    quality: config.openAiImageQuality,
+    output_format: 'png',
+    n: 1
+  });
 
-  await writeFile(filePath, imageBuffer);
+  const imageBase64 = response.data?.[0]?.b64_json;
+
+  if (!imageBase64) {
+    throw new Error('OpenAI tidak mengembalikan data gambar base64.');
+  }
+
+  const tempDir = await mkdtemp(path.join(tmpdir(), 'wa-ai-image-'));
+  const filePath = path.join(tempDir, 'generated-image.png');
+  await writeFile(filePath, Buffer.from(imageBase64, 'base64'));
 
   return { filePath, tempDir };
 };

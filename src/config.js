@@ -15,7 +15,9 @@ const megabytesToBytes = (value, defaultValue) => parsePositiveInteger(value, de
 export const config = {
   openAiApiKey: process.env.OPENAI_API_KEY,
   openAiModel: process.env.OPENAI_MODEL || 'gpt-5.4-mini',
-  imageProvider: (process.env.IMAGE_PROVIDER || 'pollinations').toLowerCase(),
+  openAiImageModel: process.env.OPENAI_IMAGE_MODEL || 'gpt-image-1',
+  openAiImageSize: process.env.OPENAI_IMAGE_SIZE || '1024x1024',
+  openAiImageQuality: process.env.OPENAI_IMAGE_QUALITY || 'low',
   systemPrompt:
     process.env.BOT_SYSTEM_PROMPT ||
     'Kamu adalah asisten WhatsApp yang ramah, ringkas, dan membantu. Jawab dalam bahasa yang sama dengan pengguna.',
