@@ -1,6 +1,6 @@
 # WhatsApp AI Bot Node.js
 
-Bot WhatsApp AI sederhana menggunakan Node.js, [Baileys](https://github.com/WhiskeySockets/Baileys), dan OpenAI Responses API.
+Bot WhatsApp AI menggunakan Node.js, [Baileys](https://github.com/WhiskeySockets/Baileys), OpenAI Responses API, OpenAI Images API, `sharp`, `ffmpeg`, dan `yt-dlp`.
 
 ## Fitur
 
@@ -8,7 +8,11 @@ Bot WhatsApp AI sederhana menggunakan Node.js, [Baileys](https://github.com/Whis
 - Balasan AI untuk chat pribadi.
 - Dukungan grup lewat mention bot atau prefix perintah.
 - Memori percakapan per chat selama proses bot berjalan.
-- Perintah `!help` dan `!reset`.
+- `!gambar <prompt>` untuk generate gambar AI dan mengirim hasilnya ke WhatsApp.
+- `!sticker` untuk membuat sticker dari gambar/video caption atau teks.
+- `!music <url>` untuk download audio dari link yang didukung `yt-dlp`.
+- `!video <url>` untuk download video dari link yang didukung `yt-dlp`.
+- Batas durasi dan ukuran file agar aman untuk WhatsApp/Termux.
 - Konfigurasi lewat file `.env`.
 
 ## Prasyarat
@@ -16,10 +20,14 @@ Bot WhatsApp AI sederhana menggunakan Node.js, [Baileys](https://github.com/Whis
 - Node.js 20 atau lebih baru.
 - Akun WhatsApp yang akan dipakai sebagai bot.
 - API key OpenAI.
+- `ffmpeg` untuk sticker video/gif dan konversi media.
+- `yt-dlp` untuk command `!music` dan `!video`.
 
 > Catatan: penggunaan automasi WhatsApp dapat dibatasi oleh ketentuan WhatsApp. Gunakan secara bertanggung jawab dan hindari spam.
+>
+> Download media hanya boleh digunakan untuk konten yang legal, milik sendiri, berlisensi, atau memang diizinkan oleh pemilik hak cipta/platform.
 
-## Instalasi
+## Instalasi di PC/Linux/macOS
 
 ```bash
 npm install
@@ -27,6 +35,56 @@ cp .env.example .env
 ```
 
 Edit `.env`, lalu isi `OPENAI_API_KEY`.
+
+## Instalasi di Termux Android
+
+Update Termux dan install paket dasar:
+
+```bash
+pkg update && pkg upgrade
+pkg install nodejs git python ffmpeg
+```
+
+Install `yt-dlp`:
+
+```bash
+python -m pip install -U pip
+python -m pip install -U yt-dlp
+```
+
+Cek instalasi:
+
+```bash
+node -v
+ffmpeg -version
+yt-dlp --version
+```
+
+Lalu install dependency project:
+
+```bash
+npm install
+cp .env.example .env
+```
+
+Jika `sharp` gagal di Termux, pastikan Termux terbaru dari F-Droid/GitHub, jalankan `pkg upgrade`, lalu ulangi `npm install`.
+
+## Konfigurasi `.env`
+
+| Variabel | Keterangan | Default |
+| --- | --- | --- |
+| `OPENAI_API_KEY` | API key OpenAI. | Wajib diisi |
+| `OPENAI_MODEL` | Model OpenAI untuk chat bot. | `gpt-5.4-mini` |
+| `OPENAI_IMAGE_MODEL` | Model OpenAI Images API untuk `!gambar`. | `gpt-image-1.5` |
+| `OPENAI_IMAGE_SIZE` | Ukuran gambar AI. | `1024x1024` |
+| `OPENAI_IMAGE_QUALITY` | Kualitas gambar AI. | `low` |
+| `BOT_SYSTEM_PROMPT` | Instruksi gaya dan perilaku bot. | Asisten ramah dan ringkas |
+| `BOT_PREFIX` | Prefix perintah di grup. | `!` |
+| `MAX_HISTORY_MESSAGES` | Jumlah pesan terakhir yang disimpan per chat. | `12` |
+| `MAX_DOWNLOAD_DURATION_SECONDS` | Durasi maksimal `!music`/`!video`. | `600` |
+| `MAX_AUDIO_MB` | Ukuran maksimal audio hasil `!music`. | `25` |
+| `MAX_VIDEO_MB` | Ukuran maksimal video hasil `!video`. | `45` |
+| `REPLY_FROM_ME` | Proses pesan dari akun bot sendiri. | `false` |
 
 ## Menjalankan Bot
 
@@ -43,32 +101,96 @@ Setelah bot berjalan, scan QR code yang muncul di terminal melalui WhatsApp:
 
 Sesi login disimpan di folder `auth/` dan sudah diabaikan oleh Git.
 
-## Konfigurasi `.env`
+## Contoh Command
 
-| Variabel | Keterangan | Default |
-| --- | --- | --- |
-| `OPENAI_API_KEY` | API key OpenAI. | Wajib diisi |
-| `OPENAI_MODEL` | Model OpenAI untuk jawaban bot. | `gpt-5.4-mini` |
-| `BOT_SYSTEM_PROMPT` | Instruksi gaya dan perilaku bot. | Asisten ramah dan ringkas |
-| `BOT_PREFIX` | Prefix perintah di grup. | `!` |
-| `MAX_HISTORY_MESSAGES` | Jumlah pesan terakhir yang disimpan per chat. | `12` |
-| `REPLY_FROM_ME` | Proses pesan dari akun bot sendiri. | `false` |
-
-## Cara Pakai
+### Chat AI biasa
 
 - **Chat pribadi:** kirim pesan biasa ke nomor bot.
-- **Grup:** mention bot atau awali pesan dengan prefix, misalnya `!buatkan caption promosi kopi`.
-- **Reset memori chat:** kirim `!reset`.
-- **Bantuan:** kirim `!help`.
+- **Grup:** mention bot atau awali pesan dengan prefix, misalnya:
+
+```text
+!buatkan caption promosi kopi susu
+```
+
+### Generate gambar AI
+
+```text
+!gambar poster cyberpunk kota Jakarta saat hujan, warna neon, detail tinggi
+```
+
+Bot akan memanggil OpenAI Images API lalu mengirim gambar hasilnya ke WhatsApp.
+
+### Membuat sticker
+
+Dari gambar:
+
+1. Kirim gambar.
+2. Isi caption:
+
+```text
+!sticker
+```
+
+Dari video pendek/gif:
+
+1. Kirim video pendek/gif.
+2. Isi caption:
+
+```text
+!sticker
+```
+
+Bot akan mencoba membuat sticker animasi WebP menggunakan `ffmpeg` jika memungkinkan.
+
+Dari teks:
+
+```text
+!sticker Jangan lupa ngopi
+```
+
+### Download audio/music
+
+```text
+!music https://youtu.be/contoh
+```
+
+Bot memakai `yt-dlp`, membatasi durasi maksimal 10 menit, lalu mengirim audio sebagai MP3 jika berhasil.
+
+### Download video
+
+```text
+!video https://www.instagram.com/reel/contoh
+```
+
+Bot memakai `yt-dlp`, membatasi durasi dan ukuran file, lalu mengirim video MP4 jika berhasil.
+
+### Utility
+
+```text
+!help
+!reset
+```
+
+## Batasan Download
+
+Default batas download:
+
+- Durasi maksimal: 10 menit (`MAX_DOWNLOAD_DURATION_SECONDS=600`).
+- Audio maksimal: 25 MB (`MAX_AUDIO_MB=25`).
+- Video maksimal: 45 MB (`MAX_VIDEO_MB=45`).
+
+Jika link privat, tidak didukung `yt-dlp`, durasi terlalu panjang, atau file terlalu besar, bot akan mengirim pesan error yang bisa dipahami user.
 
 ## Struktur Proyek
 
 ```text
 src/
-├── ai.js             # Integrasi OpenAI Responses API dan memori percakapan
+├── ai.js             # Integrasi OpenAI Responses API, Images API, dan memori percakapan
+├── commands.js       # Parser command prefix
 ├── config.js         # Konfigurasi environment
 ├── index.js          # Koneksi WhatsApp dan handler pesan
-└── message-utils.js  # Helper ekstraksi teks dan command
+├── media-utils.js    # Sticker, ffmpeg, yt-dlp, dan batas media
+└── message-utils.js  # Helper ekstraksi teks/media dan command
 ```
 
 ## Pemeriksaan Sintaks

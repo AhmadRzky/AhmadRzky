@@ -20,6 +20,24 @@ export const resetConversation = (chatId) => {
   histories.delete(chatId);
 };
 
+export const generateImage = async (prompt) => {
+  const response = await client.images.generate({
+    model: config.openAiImageModel,
+    prompt,
+    size: config.openAiImageSize,
+    quality: config.openAiImageQuality,
+    n: 1
+  });
+
+  const imageBase64 = response.data?.[0]?.b64_json;
+
+  if (!imageBase64) {
+    throw new Error('OpenAI tidak mengembalikan data gambar.');
+  }
+
+  return Buffer.from(imageBase64, 'base64');
+};
+
 export const generateReply = async (chatId, userText) => {
   const history = histories.get(chatId) || [];
   const nextHistory = trimHistory([...history, { role: 'user', content: userText }]);
