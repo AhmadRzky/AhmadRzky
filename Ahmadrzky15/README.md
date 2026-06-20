@@ -1,10 +1,9 @@
-- 👋 Hi, I’m @AhmadRzky
-- 👀 I’m interested in ...
-- 🌱 I’m currently learning ...
-- 💞️ I’m looking to collaborate on ...
-- 📫 How to reach me ...
+# 👋 Hi, I’m @AhmadRzky
 
-<!---
-AhmadRzky/AhmadRzky is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
-You can click the Preview link to take a look at your changes.
---->
+Selamat datang di repositori profil! Di sini saya menambahkan contoh animasi sederhana yang bisa langsung dibuka di browser.
+
+## 🎈 Animasi Balon Mengambang
+
+Buka file [`animation.html`](./animation.html) untuk melihat sebuah adegan pegunungan saat matahari terbit dengan balon udara yang terus mengambang. Animasi dibuat hanya dengan HTML dan CSS sehingga mudah untuk dipelajari atau dimodifikasi sesuai kebutuhan Anda.
+
+Silakan gunakan animasi ini sebagai referensi atau titik awal untuk eksperimen kreatif lainnya!
