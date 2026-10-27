@@ -12,15 +12,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        w: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20]
+        w: [1,2,3,4,5,6,7,8]
     steps:
       - uses: actions/checkout@v4
       - run: |
           cat inst/part* > inst.cnf.gz && gunzip -f inst.cnf.gz
           gcc -O3 -march=native -o ps ps.c -lm 2> st.txt
-          CBS=(3.7 3.4 4.0 3.2 4.4 3.0 3.8 3.6)
+          CBS=(4.4 4.8 5.2 5.6 6.0 4.6 5.0 5.4)
           N=$(nproc); for i in $(seq 1 $N); do s=$(( ${{ matrix.w }} * 100 + i )); cb=${CBS[$(( (${{ matrix.w }}+i) % 8 ))]}; timeout 790 ./ps inst.cnf $s 770 $cb > out_$s.txt 2>&1 & done; wait || true
           for f in out_*.txt; do echo "$f $(head -c 120 $f)" >> st.txt; if grep -q "^s SATISFIABLE" $f; then cp $f sol.txt; fi; done
           git config user.name nonce-bot; git config user.email bot@users.noreply.github.com
-          mkdir -p res2 && cp st.txt res2/st_${{ matrix.w }}.txt; [ -f sol.txt ] && cp sol.txt res2/sol_${{ matrix.w }}.txt
-          for t in 1 2 3 4 5 6 7 8; do git pull -q --rebase origin nonce; git add res2 && git commit -qm "res2 ${{ matrix.w }}"; git push -q origin HEAD:nonce && break; sleep $((RANDOM%5+2)); done
+          mkdir -p res3 && cp st.txt res3/st_${{ matrix.w }}.txt; [ -f sol.txt ] && cp sol.txt res3/sol_${{ matrix.w }}.txt
+          for t in 1 2 3 4 5 6 7 8; do git pull -q --rebase origin nonce; git add res3 && git commit -qm "res3 ${{ matrix.w }}"; git push -q origin HEAD:nonce && break; sleep $((RANDOM%5+2)); done
