@@ -8,7 +8,7 @@ permissions:
 jobs:
   solve:
     runs-on: ubuntu-latest
-    timeout-minutes: 16
+    timeout-minutes: 17
     strategy:
       fail-fast: false
       matrix:
@@ -16,12 +16,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: |
-          cat inst/part* > inst.cnf.gz && gunzip inst.cnf.gz
-          git clone -q --depth 1 https://github.com/arminbiere/kissat && cd kissat && ./configure -q >/dev/null && make -j4 >/dev/null && cd ..
-          N=$(nproc); for i in $(seq 1 $N); do s=$(( ${{ matrix.w }} * 100 + i )); timeout 780 kissat/build/kissat --seed=$s -q inst.cnf > out_$s.txt & done; wait || true
-          for f in out_*.txt; do if grep -q "^s SATISFIABLE" $f; then cp $f sol.txt; fi; done
-          if [ -f sol.txt ]; then
-            git config user.name nonce-bot; git config user.email bot@users.noreply.github.com
-            mkdir -p res && cp sol.txt res/sol_${{ matrix.w }}.txt
-            for t in 1 2 3 4 5; do git pull -q --rebase origin nonce; git add res && git commit -qm "sol ${{ matrix.w }}" && git push -q origin HEAD:nonce && break; sleep 3; done
-          fi
+          T0=$(date +%s)
+          cat inst/part* > inst.cnf.gz && gunzip -f inst.cnf.gz
+          git clone -q --depth 1 https://github.com/arminbiere/kissat && cd kissat && ./configure > ../build.log 2>&1 && make -j4 >> ../build.log 2>&1; cd ..
+          ls -la kissat/build/kissat > st.txt 2>&1; echo "nproc $(nproc) build $(( $(date +%s)-T0 ))s" >> st.txt
+          N=$(nproc); for i in $(seq 1 $N); do s=$(( ${{ matrix.w }} * 100 + i )); timeout 780 kissat/build/kissat --seed=$s -q inst.cnf > out_$s.txt 2>&1 & done; wait || true
+          for f in out_*.txt; do echo "$f $(grep -m1 '^s ' $f)" >> st.txt; if grep -q "^s SATISFIABLE" $f; then cp $f sol.txt; fi; done
+          echo "total $(( $(date +%s)-T0 ))s" >> st.txt; tail -5 build.log >> st.txt
+          git config user.name nonce-bot; git config user.email bot@users.noreply.github.com
+          mkdir -p res && cp st.txt res/st_${{ matrix.w }}.txt; [ -f sol.txt ] && cp sol.txt res/sol_${{ matrix.w }}.txt
+          for t in 1 2 3 4 5 6 7 8; do git pull -q --rebase origin nonce; git add res && git commit -qm "res ${{ matrix.w }}"; git push -q origin HEAD:nonce && break; sleep $((RANDOM%5+2)); done
