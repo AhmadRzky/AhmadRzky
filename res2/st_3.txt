@@ -1,0 +1,11 @@
+ps.c: In function ‘main’:
+ps.c:12:70: warning: ignoring return value of ‘fscanf’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   12 |  cl=malloc(sizeof(int)*m*5);for(int i=0;i<m;i++){for(int j=0;j<5;j++)fscanf(f,"%d",&cl[i*5+j]);int z;fscanf(f,"%d",&z);}
+      |                                                                      ^~~~~~~~~~~~~~~~~~~~~~~~~
+ps.c:12:102: warning: ignoring return value of ‘fscanf’ declared with attribute ‘warn_unused_result’ [-Wunused-result]
+   12 |  cl=malloc(sizeof(int)*m*5);for(int i=0;i<m;i++){for(int j=0;j<5;j++)fscanf(f,"%d",&cl[i*5+j]);int z;fscanf(f,"%d",&z);}
+      |                                                                                                      ^~~~~~~~~~~~~~~~~
+out_301.txt s UNKNOWN best 15 flips 803209216
+out_302.txt s UNKNOWN best 80 flips 767033344
+out_303.txt s UNKNOWN best 24 flips 774897664
+out_304.txt s UNKNOWN best 33 flips 770441216
